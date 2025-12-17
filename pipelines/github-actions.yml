@@ -1,0 +1,91 @@
+# GitHub Actions Workflow for Doc Agent
+# Place this file in .github/workflows/doc-agent.yml
+
+name: API Documentation Generator
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - '**/*.py'  # Only run when Python files change
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      
+      - name: Clone Doc Agent
+        run: |
+          git clone https://github.com/yourusername/doc-agent.git /tmp/doc-agent
+          cd /tmp/doc-agent
+          uv pip install --system -e .
+      
+      - name: Generate API Documentation
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          python -m src.main generate \
+            --path . \
+            --output docs/API.md \
+            --name "${{ github.event.repository.name }}" \
+            --api-key ${GROQ_API_KEY}
+      
+      - name: Check for documentation changes
+        id: check_changes
+        run: |
+          if git diff --quiet docs/API.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "✅ Documentation is up to date"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "📝 Documentation has been updated"
+          fi
+      
+      - name: Commit and push changes
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config user.name "doc-agent[bot]"
+          git config user.email "doc-agent[bot]@users.noreply.github.com"
+          git add docs/API.md
+          git commit -m "docs: Update API documentation [doc-agent]"
+          git push
+      
+      - name: Comment on PR
+        if: steps.check_changes.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🤖 **Doc Agent**: API documentation has been automatically updated based on code changes.\n\nPlease review the changes in `docs/API.md`.'
+            })
+      
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-documentation
+          path: docs/API.md

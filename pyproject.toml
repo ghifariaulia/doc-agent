@@ -1,0 +1,37 @@
+[project]
+name = "doc-agent"
+version = "1.0.0"
+description = "AI-powered API documentation generator for FastAPI applications"
+authors = [
+    {name = "Ghifari Aulia Azhar Riza", email = "ghifari.auliaz@gmail.com"}
+]
+# readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "groq>=0.4.0",
+    "typer>=0.9.0",
+    "gitpython>=3.1.40",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.5.0",
+    "rich>=13.7.0",
+]
+
+[project.scripts]
+doc-agent = "src.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]

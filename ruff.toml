@@ -1,0 +1,12 @@
+line-length = 120
+indent-width = 4
+
+[format]
+quote-style = "preserve"
+indent-style = "space"
+docstring-code-format = true
+
+[lint]
+select = ["F401", "F821"]
+extend-select = ["I"]
+ignore = ["E501", "I001"]

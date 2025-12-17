@@ -1,0 +1,65 @@
+# GitLab CI/CD Pipeline Configuration for Doc Agent
+# Place this file in your project's .gitlab-ci.yml
+
+stages:
+  - documentation
+  - validate
+
+variables:
+  DOC_AGENT_VERSION: "latest"
+  DOC_OUTPUT_PATH: "docs/API.md"
+
+# Job to generate/update API documentation
+generate_docs:
+  stage: documentation
+  image: python:3.13-slim
+  before_script:
+    # Install uv for fast dependency management
+    - pip install uv
+    # Clone or pull doc-agent (adjust to your setup)
+    - |
+      if [ ! -d "doc-agent" ]; then
+        git clone https://github.com/yourusername/doc-agent.git
+      fi
+    - cd doc-agent
+    - uv pip install --system -e .
+    - cd ..
+  script:
+    # Run doc-agent to generate/update documentation
+    - |
+      python -m src.main generate \
+        --path . \
+        --output ${DOC_OUTPUT_PATH} \
+        --name "${CI_PROJECT_NAME}" \
+        --api-key ${GROQ_API_KEY}
+    
+    # Check if documentation was modified
+    - |
+      if git diff --quiet ${DOC_OUTPUT_PATH}; then
+        echo "✅ Documentation is up to date"
+      else
+        echo "📝 Documentation has been updated"
+        git config user.name "Doc Agent Bot"
+        git config user.email "doc-agent@mekar.id"
+        git add ${DOC_OUTPUT_PATH}
+        git commit -m "docs: Update API documentation [skip ci]"
+        git push https://oauth2:${CI_PUSH_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:${CI_COMMIT_REF_NAME}
+      fi
+  only:
+    - merge_requests
+  variables:
+    GIT_STRATEGY: clone
+
+# Optional: Validate that documentation exists and is current
+validate_docs:
+  stage: validate
+  image: python:3.11-slim
+  script:
+    - |
+      if [ ! -f "${DOC_OUTPUT_PATH}" ]; then
+        echo "❌ Error: API documentation not found at ${DOC_OUTPUT_PATH}"
+        exit 1
+      fi
+    - echo "✅ Documentation file exists"
+  only:
+    - merge_requests
