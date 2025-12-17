@@ -42,6 +42,7 @@ def generate(
     groq_model: str = typer.Option("llama-3.3-70b-versatile", "--model", "-m", help="Groq model to use"),
     save_analysis: bool = typer.Option(False, "--save-analysis", help="Save endpoint analysis to JSON file"),
     auto_commit: bool = typer.Option(False, "--auto-commit", help="Automatically commit generated documentation"),
+    agentic: bool = typer.Option(False, "--agentic", help="Enable agentic review and self-correction loop"),
 ):
     """
     Generate or update API documentation for FastAPI or Django projects
@@ -103,7 +104,7 @@ def generate(
             # Step 3: Generate/update documentation
             task = progress.add_task("Generating documentation with AI...", total=None)
             doc_manager = DocumentationManager(output, groq_service)
-            doc_path = doc_manager.generate_or_update(endpoints, project_name)
+            doc_path = doc_manager.generate_or_update(endpoints, project_name, agentic=agentic)
             progress.update(task, completed=True)
             console.print(f"[green]✓[/green] Documentation ready: {doc_path}")
 

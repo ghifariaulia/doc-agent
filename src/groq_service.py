@@ -234,3 +234,78 @@ Generate a comprehensive documentation section in Markdown format including:
             summary += "No changes detected.\n"
 
         return summary
+
+    def critique_documentation(self, doc_content: str, endpoints: List[EndpointInfo]) -> str:
+        """Critique the generated documentation against the code analysis"""
+
+        endpoints_summary = self._create_documentation_prompt(endpoints, "API Context")
+
+        prompt = f"""
+        You are a strict API Documentation Reviewer. Your job is to check the generated documentation against the actual API structure.
+        
+        **Actual Code Analysis (Truth)**:
+        {endpoints_summary}
+        
+        **Generated Documentation**:
+        {doc_content}
+        
+        Review the documentation for:
+        1. **Accuracy**: Do all endpoints from the code appear in the docs?
+        2. **Correctness**: Do parameters and types match exactly?
+        3. **Missing Info**: Are any required parameters marked as optional or vice-versa?
+        
+        If the documentation is accurate, respond with ONLY: "STATUS: PASS"
+        
+        If there are issues, respond with:
+        "STATUS: FAIL"
+        [List of specific issues found]
+        """
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are a QA for API documentation."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error critiquing documentation: {e}")
+            return "STATUS: PASS"  # Fail open if API fails
+
+    def refine_documentation(self, doc_content: str, critique: str, endpoints: List[EndpointInfo]) -> str:
+        """Refine documentation based on critique"""
+
+        endpoints_summary = self._create_documentation_prompt(endpoints, "API Context")
+
+        prompt = f"""
+        You need to fix the API documentation based on a critique.
+        
+        **Actual Code Analysis**:
+        {endpoints_summary}
+        
+        **Current Draft**:
+        {doc_content}
+        
+        **Critique (Issues to Fix)**:
+        {critique}
+        
+        Please rewrite the documentation to address all the issues in the critique.
+        Return the COMPLETE corrected markdown.
+        """
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are an expert technical writer fixing documentation errors."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.1,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error refining documentation: {e}")
+            return doc_content  # Return original if refinement fails

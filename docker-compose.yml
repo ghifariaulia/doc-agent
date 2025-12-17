@@ -18,3 +18,4 @@ services:
       --path /app/project
       --output /app/docs/API.md
       --name "Sample API"
+      --agentic

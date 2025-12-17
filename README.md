@@ -6,9 +6,10 @@ Automatically generate and maintain API documentation for FastAPI applications u
 
 - 🔍 **Smart Code Analysis** - Automatically extracts endpoints, parameters, and models from FastAPI code
 - 🤖 **AI-Powered Generation** - Uses Groq's LLMs to create comprehensive, developer-friendly documentation
+- 🕵️ **Self-Correcting Agents** - Runs a "Reviewer-Refiner" loop to verify and fix documentation automatically
 - 🔄 **Intelligent Updates** - Only updates changed endpoints, preserves manual edits
 - 🐳 **Docker Ready** - Fully containerized with Docker and docker-compose
-- ⚡ **Fast Dependencies** - Uses `uv` for blazing-fast dependency management
+- ⚡ **Lightweight** - Clean architecture using AST parsing (no heavy framework dependencies)
 - 🔗 **CI/CD Integration** - Pre-configured for GitLab CI and GitHub Actions
 - 📝 **Rich CLI** - Beautiful command-line interface with progress indicators
 
@@ -64,7 +65,19 @@ python -m src.main generate \
   --name "My Awesome API" \
   --api-key your_groq_key \
   --model llama-3.3-70b-versatile \
+  --agentic \
   --auto-commit
+```
+
+### Enable Agentic Mode (Recommended)
+
+Use the `--agentic` flag to enable the **Self-Correction Loop**. The agent will:
+1. Generate draft documentation
+2. Review it against the code
+3. Refine it if errors are found
+
+```bash
+python -m src.main generate --path ./my-api --agentic
 ```
 
 ### Analyze Endpoints Only
@@ -108,7 +121,9 @@ Options:
   --api-key, -k     Groq API key (or set GROQ_API_KEY env var)
   --model, -m       Groq model to use (default: llama-3.3-70b-versatile)
   --save-analysis   Save endpoint analysis to JSON file
+  --save-analysis   Save endpoint analysis to JSON file
   --auto-commit     Automatically commit generated documentation
+  --agentic         Enable agentic review and self-correction loop
 ```
 
 ## 🔗 CI/CD Integration

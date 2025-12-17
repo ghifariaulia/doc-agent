@@ -10,6 +10,7 @@ from typing import List
 
 from .analyzers.base import EndpointInfo
 from .groq_service import GroqService
+from .reviewer import DocumentationReviewer
 
 
 class DocumentationManager:
@@ -18,25 +19,29 @@ class DocumentationManager:
     def __init__(self, output_path: str, groq_service: GroqService):
         self.output_path = Path(output_path)
         self.groq_service = groq_service
+        self.reviewer = DocumentationReviewer(groq_service)
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def generate_or_update(self, endpoints: List[EndpointInfo], project_name: str = "API") -> str:
+    def generate_or_update(
+        self, endpoints: List[EndpointInfo], project_name: str = "API", agentic: bool = False
+    ) -> str:
         """
         Generate new documentation or smartly update existing one
 
         Args:
             endpoints: List of endpoint information
             project_name: Name of the project
+            agentic: Whether to use agentic review loop
 
         Returns:
             Path to the generated/updated documentation
         """
         if self.output_path.exists():
-            return self._update_existing_documentation(endpoints, project_name)
+            return self._update_existing_documentation(endpoints, project_name, agentic)
         else:
-            return self._generate_documentation(endpoints, project_name)
+            return self._generate_documentation(endpoints, project_name, agentic)
 
-    def _update_existing_documentation(self, endpoints: List[EndpointInfo], project_name: str) -> str:
+    def _update_existing_documentation(self, endpoints: List[EndpointInfo], project_name: str, agentic: bool) -> str:
         """Update existing documentation by replacing the Endpoints section"""
 
         print(f"🔄 Updating existing documentation...")
@@ -47,6 +52,16 @@ class DocumentationManager:
 
         # Generate new API documentation content
         new_api_docs = self.groq_service.generate_documentation(endpoints, project_name)
+
+        # Agentic Review Loop
+        if agentic:
+            print("🕵️  Reviewing documentation...")
+            passed, content_or_refined = self.reviewer.review(new_api_docs, endpoints)
+            if not passed:
+                print("✨  Refining documentation based on critique...")
+                new_api_docs = content_or_refined
+            else:
+                print("✅  Documentation passed review.")
 
         # Try to find and replace the Endpoints section
         updated_content = self._replace_endpoints_section(existing_content, new_api_docs)
@@ -93,13 +108,23 @@ class DocumentationManager:
         print("ℹ️  No existing Endpoints section found, appending to end")
         return existing.rstrip() + "\n\n" + new_api_docs
 
-    def _generate_documentation(self, endpoints: List[EndpointInfo], project_name: str) -> str:
+    def _generate_documentation(self, endpoints: List[EndpointInfo], project_name: str, agentic: bool) -> str:
         """Generate documentation from endpoints"""
 
         print(f"📝 Generating documentation for {len(endpoints)} endpoints...")
 
         # Generate clean markdown with Groq AI
         doc_content = self.groq_service.generate_documentation(endpoints, project_name)
+
+        # Agentic Review Loop
+        if agentic:
+            print("🕵️  Reviewing documentation...")
+            passed, content_or_refined = self.reviewer.review(doc_content, endpoints)
+            if not passed:
+                print("✨  Refining documentation based on critique...")
+                doc_content = content_or_refined
+            else:
+                print("✅  Documentation passed review.")
 
         # Write clean markdown to file (no markers)
         with open(self.output_path, "w", encoding="utf-8") as f:
