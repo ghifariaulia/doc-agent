@@ -53,7 +53,7 @@ generate_docs:
 # Optional: Validate that documentation exists and is current
 validate_docs:
   stage: validate
-  image: python:3.11-slim
+  image: python:3.13-slim
   script:
     - |
       if [ ! -f "${DOC_OUTPUT_PATH}" ]; then
